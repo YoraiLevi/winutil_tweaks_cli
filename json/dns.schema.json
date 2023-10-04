@@ -1,0 +1,21 @@
+{
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "type": "object",
+    "additionalProperties": {
+        "type": "object",
+        "properties": {
+            "Primary": {
+                "type": "string",
+                "format": "ipv4"
+            },
+            "Secondary": {
+                "type": "string",
+                "format": "ipv4"
+            }
+        },
+        "required": [
+            "Primary",
+            "Secondary"
+        ]
+    }
+}

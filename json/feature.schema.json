@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "feature": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "InvokeScript": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": ["feature", "InvokeScript"]
+  }
+}

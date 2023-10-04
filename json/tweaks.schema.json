@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "registry": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "Path": {
+              "type": "string"
+            },
+            "Name": {
+              "type": "string"
+            },
+            "Type": {
+              "type": "string"
+            },
+            "Value": {
+              "type": "string"
+            },
+            "OriginalValue": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Path",
+            "Name",
+            "Type",
+            "Value",
+            "OriginalValue"
+          ]
+        }
+      },
+      "service": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "Name": {
+              "type": "string"
+            },
+            "StartupType": {
+              "type": "string"
+            },
+            "OriginalType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Name",
+            "StartupType",
+            "OriginalType"
+          ]
+        }
+      },
+      "ScheduledTask": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "Name": {
+              "type": "string"
+            },
+            "State": {
+              "type": "string"
+            },
+            "OriginalState": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Name",
+            "State",
+            "OriginalState"
+          ]
+        }
+      },
+      "InvokeScript": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "UndoScript": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "appx": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
