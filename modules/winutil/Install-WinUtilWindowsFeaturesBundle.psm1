@@ -13,6 +13,10 @@ function Install-WinUtilWindowsFeaturesBundle {
         if ($Force -and -not $Confirm) {
             $ConfirmPreference = 'None'
         }
+        if (!$WhatIfPreference -and -Not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+            throw "Access denied. Please run as an administrator."
+            return
+        }
     }
     Process {
         if ($PSCmdlet.ShouldProcess($WindowsFeaturesBundle, 'Install Windows Feature Bundle')) {

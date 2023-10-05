@@ -31,15 +31,13 @@ function Remove-AppxPackageLike {
         if ($Force -and -not $Confirm) {
             $ConfirmPreference = 'None'
         }
-    }
-    Process {
-        $Name = "*$Name*"
-    
-        # Check if the user has administrative privileges
         if (!$WhatIfPreference -and -Not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
             throw "The requested operation requires elevation. Please run as an administrator." # Get-AppxProvisionedPackage requires elevation
             return
         }
+    }
+    Process {
+        $Name = "*$Name*"
     
         try {
             $appxPackages = Get-AppxPackage $Name

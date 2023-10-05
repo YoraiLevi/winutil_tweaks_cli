@@ -45,6 +45,10 @@ function Invoke-WinUtilTweak {
         if ($Force -and -not $Confirm) {
             $ConfirmPreference = 'None'
         }
+        if (!$WhatIfPreference -and -Not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+            throw "Access denied. Please run as an administrator."
+            return
+        }
         if ($Undo) {
             $Values = @{
                 Registry      = "OriginalValue"

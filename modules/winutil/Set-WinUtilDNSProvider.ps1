@@ -27,6 +27,10 @@ function Set-WinUtilDNSProvider {
         Write-Error "DNSProvider $DNSProvider not found"
         return
     }
+    if (!$WhatIfPreference -and -Not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        throw "Access denied. Please run as an administrator."
+        return
+    }
     if ($PSCmdlet.ShouldProcess($DNSProvider, 'Set DNS provider')) {
         Try {
             $Adapters = Get-NetAdapter | Where-Object { $_.Status -eq "Up" }

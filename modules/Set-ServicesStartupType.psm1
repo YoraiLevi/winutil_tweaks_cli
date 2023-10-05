@@ -41,7 +41,6 @@ Function Set-ServicesStartupType {
         }
     }
     Process {
-        # Check if the service exists
         try {
             $services = Get-Service -Name $Name -ErrorAction Stop
             if ($services.Count -eq 0) {

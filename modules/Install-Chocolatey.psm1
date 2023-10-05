@@ -37,6 +37,10 @@ function Install-Chocolatey {
             # Write-Host "Chocolatey Already Installed"
             return
         }
+        if (!$WhatIfPreference -and -Not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+            throw "Access denied. Please run as an administrator."
+            return
+        }
         if ($PSCmdlet.ShouldProcess("Installing Chocolatey", "Would you like to install Chocolatey?", "Chocolatey is not installed")) {
             Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) -ErrorAction Stop
             powershell choco feature enable -n allowGlobalConfirmation
