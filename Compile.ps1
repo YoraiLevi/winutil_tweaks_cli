@@ -27,7 +27,7 @@ Get-ChildItem .\scripts -Recurse -File -Exclude footer.ps1,header.ps1 | ForEach-
 Get-ChildItem .\json | Where-Object { $psitem.extension -eq ".json" } | ForEach-Object {
     $json = (Get-Content $psitem.FullName).replace("'", "''")
     
-    Write-output "`$$($psitem.BaseName) = '$json' `| convertfrom-json" | Out-File ./$scriptname -Append -Encoding ascii
+    Write-output "`$$($psitem.BaseName.replace('.','')) = '$json'" | Out-File ./$scriptname -Append -Encoding ascii
 }
 
 Get-Content .\scripts\footer.ps1 | Out-File ./$scriptname -Append -Encoding ascii

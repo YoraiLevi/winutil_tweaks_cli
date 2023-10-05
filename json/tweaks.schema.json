@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
   "type": "object",
   "additionalProperties": {
     "type": "object",
@@ -8,30 +8,123 @@
         "type": "array",
         "items": {
           "type": "object",
+          "allOf": [
+            {
+              "oneOf": [
+                {
+                  "required": [
+                    "Path"
+                  ]
+                },
+                {
+                  "required": [
+                    "path"
+                  ]
+                }
+              ]
+            },
+            {
+              "oneOf": [
+                {
+                  "required": [
+                    "Name"
+                  ]
+                },
+                {
+                  "required": [
+                    "name"
+                  ]
+                }
+              ]
+            },
+            {
+              "oneOf": [
+                {
+                  "required": [
+                    "Type"
+                  ]
+                },
+                {
+                  "required": [
+                    "type"
+                  ]
+                }
+              ]
+            },
+            {
+              "oneOf": [
+                {
+                  "required": [
+                    "Value"
+                  ]
+                },
+                {
+                  "required": [
+                    "value"
+                  ]
+                }
+              ]
+            },
+            {
+              "oneOf": [
+                {
+                  "required": [
+                    "OriginalValue"
+                  ]
+                },
+                {
+                  "required": [
+                    "originalValue"
+                  ]
+                },
+                {
+                  "required": [
+                    "Originalvalue"
+                  ]
+                },
+                {
+                  "required": [
+                    "originalvalue"
+                  ]
+                }
+              ]
+            }
+          ],
           "properties": {
             "Path": {
+              "type": "string"
+            },
+            "path": {
               "type": "string"
             },
             "Name": {
               "type": "string"
             },
+            "name": {
+              "type": "string"
+            },
             "Type": {
+              "type": "string"
+            },
+            "type": {
               "type": "string"
             },
             "Value": {
               "type": "string"
             },
+            "value": {
+              "type": "string"
+            },
             "OriginalValue": {
               "type": "string"
+            },
+            "originalValue": {
+              "type": "string"
+            },
+            "originalvalue": {
+              "type": "string"
             }
-          },
-          "required": [
-            "Path",
-            "Name",
-            "Type",
-            "Value",
-            "OriginalValue"
-          ]
+          }
         }
       },
       "service": {

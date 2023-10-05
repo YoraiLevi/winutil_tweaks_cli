@@ -5,7 +5,7 @@
 ###                                                                                                          ###
 ################################################################################################################
 
-# Compiled at 23.10.04
+# Compiled at 23.10.05
 
 [CmdletBinding(
     SupportsShouldProcess = $true,
@@ -27,6 +27,10 @@ Param(
     [switch]$ListFeatureBundles,
     [Parameter(ParameterSetName = 'ListCommand')]
     [switch]$ListDNSProviders,
+    [psobject[]]$ExtraTweaks = @('https://raw.githubusercontent.com/ChrisTitusTech/winutil/main/config/tweaks.json'),
+    [psobject[]]$ExtraDNSProviders = @('https://raw.githubusercontent.com/ChrisTitusTech/winutil/main/config/dns.json'),
+    [psobject[]]$ExtraWindowsFeaturesBundles = @('https://raw.githubusercontent.com/ChrisTitusTech/winutil/main/config/feature.json'),
+    [string]$TranscriptPath = "$ENV:TEMP\Winutil.log",
     [switch]$Force
 )
 if ($Force -and -not $Confirm) {
@@ -592,7 +596,9 @@ function Invoke-WinUtil {
     return
   }
   
-  New-RestorePoint
+  if ($TweakNames -or $WindowsFeaturesBundles) {
+    New-RestorePoint
+  }
   if ($DNSProvider) {
     Set-WinUtilDNSProvider -DNSProvider $DNSProvider -dns $dns
   }
@@ -703,6 +709,30 @@ function Invoke-WinUtilTweak {
         }
     }
 }
+Function Merge-Hashtables([ScriptBlock]$Operator) {
+    # https://stackoverflow.com/a/32890418/12603110
+    $Output = @{}
+    ForEach ($Hashtable in $Input) {
+        If ($Hashtable -is [Hashtable]) {
+            ForEach ($Key in $Hashtable.Keys) { $Output.$Key = If ($Output.ContainsKey($Key)) { @($Output.$Key) + $Hashtable.$Key } Else { $Hashtable.$Key } }
+        }
+    }
+    If ($Operator) { ForEach ($Key in @($Output.Keys)) { $_ = @($Output.$Key); $Output.$Key = Invoke-Command $Operator } }
+    $Output
+}
+
+Function Merge-CustomObjects([ScriptBlock]$Operator) {
+    $Output = [PSCustomObject]@{}
+    ForEach ($Hashtable in $Input) {
+        If ($Hashtable -is [PSCustomObject]) {
+            ForEach ($Key in (Get-Member -InputObject $Hashtable -MemberType NoteProperty).Name) {
+                Add-Member -Force -InputObject $Output -MemberType NoteProperty -Name $Key -Value $(if ($Output.psobject.properties.match($Key).Count) { @($Output.$Key) + $Hashtable.$Key } Else { $Hashtable.$Key })
+            }
+        }
+    }
+    If ($Operator) { ForEach ($Key in @(Get-Member -InputObject $Output -MemberType NoteProperty).Name) { $_ = @($Output.$Key); $Output.$Key = Invoke-Command $Operator } }
+    $Output
+}
 function Set-WinUtilDNSProvider {
     <#
     
@@ -781,7 +811,28 @@ $dns = '{
         "Primary": "9.9.9.9",
         "Secondary": "149.112.112.112"
     }
-}' | convertfrom-json
+}'
+$dnsschema = '{
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "type": "object",
+    "additionalProperties": {
+        "type": "object",
+        "properties": {
+            "Primary": {
+                "type": "string",
+                "format": "ipv4"
+            },
+            "Secondary": {
+                "type": "string",
+                "format": "ipv4"
+            }
+        },
+        "required": [
+            "Primary",
+            "Secondary"
+        ]
+    }
+}'
 $feature = '{
   "WPFFeaturesdotnet": {
     "feature": [
@@ -842,7 +893,29 @@ $feature = '{
       "
     ]
   }
-}' | convertfrom-json
+}'
+$featureschema = '{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "feature": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "InvokeScript": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": ["feature", "InvokeScript"]
+  }
+}'
 $tweaks = '{
   "WPFEssTweaksAH": {
     "registry": [
@@ -2406,284 +2479,284 @@ $tweaks = '{
     "registry": [
       {
         "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\DataCollection",
-        "type": "DWord",
-        "value": "0",
-        "name": "AllowTelemetry",
+        "Type": "DWord",
+        "Value": "0",
+        "Name": "AllowTelemetry",
         "OriginalValue": "1"
       },
       {
         "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection",
         "OriginalValue": "1",
-        "name": "AllowTelemetry",
-        "value": "0",
-        "type": "DWord"
+        "Name": "AllowTelemetry",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
         "OriginalValue": "1",
-        "name": "ContentDeliveryAllowed",
-        "value": "0",
-        "type": "DWord"
+        "Name": "ContentDeliveryAllowed",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
         "OriginalValue": "1",
-        "name": "OemPreInstalledAppsEnabled",
-        "value": "0",
-        "type": "DWord"
+        "Name": "OemPreInstalledAppsEnabled",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
         "OriginalValue": "1",
-        "name": "PreInstalledAppsEnabled",
-        "value": "0",
-        "type": "DWord"
+        "Name": "PreInstalledAppsEnabled",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
         "OriginalValue": "1",
-        "name": "PreInstalledAppsEverEnabled",
-        "value": "0",
-        "type": "DWord"
+        "Name": "PreInstalledAppsEverEnabled",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
         "OriginalValue": "1",
-        "name": "SilentInstalledAppsEnabled",
-        "value": "0",
-        "type": "DWord"
+        "Name": "SilentInstalledAppsEnabled",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
         "OriginalValue": "1",
-        "name": "SubscribedContent-338387Enabled",
-        "value": "0",
-        "type": "DWord"
+        "Name": "SubscribedContent-338387Enabled",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
         "OriginalValue": "1",
-        "name": "SubscribedContent-338388Enabled",
-        "value": "0",
-        "type": "DWord"
+        "Name": "SubscribedContent-338388Enabled",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
         "OriginalValue": "1",
-        "name": "SubscribedContent-338389Enabled",
-        "value": "0",
-        "type": "DWord"
+        "Name": "SubscribedContent-338389Enabled",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
         "OriginalValue": "1",
-        "name": "SubscribedContent-353698Enabled",
-        "value": "0",
-        "type": "DWord"
+        "Name": "SubscribedContent-353698Enabled",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
         "OriginalValue": "1",
-        "name": "SystemPaneSuggestionsEnabled",
-        "value": "0",
-        "type": "DWord"
+        "Name": "SystemPaneSuggestionsEnabled",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent",
         "OriginalValue": "0",
-        "name": "DisableWindowsConsumerFeatures",
-        "value": "1",
-        "type": "DWord"
+        "Name": "DisableWindowsConsumerFeatures",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Siuf\\Rules",
         "OriginalValue": "0",
-        "name": "NumberOfSIUFInPeriod",
-        "value": "0",
-        "type": "DWord"
+        "Name": "NumberOfSIUFInPeriod",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection",
         "OriginalValue": "0",
-        "name": "DoNotShowFeedbackNotifications",
-        "value": "1",
-        "type": "DWord"
+        "Name": "DoNotShowFeedbackNotifications",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent",
         "OriginalValue": "0",
-        "name": "DisableTailoredExperiencesWithDiagnosticData",
-        "value": "1",
-        "type": "DWord"
+        "Name": "DisableTailoredExperiencesWithDiagnosticData",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\AdvertisingInfo",
         "OriginalValue": "0",
-        "name": "DisabledByGroupPolicy",
-        "value": "1",
-        "type": "DWord"
+        "Name": "DisabledByGroupPolicy",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\Windows Error Reporting",
         "OriginalValue": "0",
-        "name": "Disabled",
-        "value": "1",
-        "type": "DWord"
+        "Name": "Disabled",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\DeliveryOptimization\\Config",
         "OriginalValue": "1",
-        "name": "DODownloadMode",
-        "value": "1",
-        "type": "DWord"
+        "Name": "DODownloadMode",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Remote Assistance",
         "OriginalValue": "1",
-        "name": "fAllowToGetHelp",
-        "value": "0",
-        "type": "DWord"
+        "Name": "fAllowToGetHelp",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\OperationStatusManager",
         "OriginalValue": "0",
-        "name": "EnthusiastMode",
-        "value": "1",
-        "type": "DWord"
+        "Name": "EnthusiastMode",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
         "OriginalValue": "1",
-        "name": "ShowTaskViewButton",
-        "value": "0",
-        "type": "DWord"
+        "Name": "ShowTaskViewButton",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced\\People",
         "OriginalValue": "1",
-        "name": "PeopleBand",
-        "value": "0",
-        "type": "DWord"
+        "Name": "PeopleBand",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
         "OriginalValue": "1",
-        "name": "LaunchTo",
-        "value": "1",
-        "type": "DWord"
+        "Name": "LaunchTo",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\FileSystem",
         "OriginalValue": "0",
-        "name": "LongPathsEnabled",
-        "value": "1",
-        "type": "DWord"
+        "Name": "LongPathsEnabled",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "_Comment" : "Driver searching is a function that should be left in",
         "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\DriverSearching",
         "OriginalValue": "1",
-        "name": "SearchOrderConfig",
-        "value": "1",
-        "type": "DWord"
+        "Name": "SearchOrderConfig",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile",
         "OriginalValue": "1",
-        "name": "SystemResponsiveness",
-        "value": "0",
-        "type": "DWord"
+        "Name": "SystemResponsiveness",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile",
         "OriginalValue": "1",
-        "name": "NetworkThrottlingIndex",
-        "value": "4294967295",
-        "type": "DWord"
+        "Name": "NetworkThrottlingIndex",
+        "Value": "4294967295",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\Control Panel\\Desktop",
         "OriginalValue": "1",
-        "name": "MenuShowDelay",
-        "value": "1",
-        "type": "DWord"
+        "Name": "MenuShowDelay",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\Control Panel\\Desktop",
         "OriginalValue": "1",
-        "name": "AutoEndTasks",
-        "value": "1",
-        "type": "DWord"
+        "Name": "AutoEndTasks",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management",
         "OriginalValue": "0",
-        "name": "ClearPageFileAtShutdown",
-        "value": "0",
-        "type": "DWord"
+        "Name": "ClearPageFileAtShutdown",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SYSTEM\\ControlSet001\\Services\\Ndu",
         "OriginalValue": "1",
-        "name": "Start",
-        "value": "2",
-        "type": "DWord"
+        "Name": "Start",
+        "Value": "2",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\Control Panel\\Mouse",
         "OriginalValue": "400",
-        "name": "MouseHoverTime",
-        "value": "400",
-        "type": "String"
+        "Name": "MouseHoverTime",
+        "Value": "400",
+        "Type": "String"
       },
       {
         "Path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanServer\\Parameters",
         "OriginalValue": "20",
-        "name": "IRPStackSize",
-        "value": "30",
-        "type": "DWord"
+        "Name": "IRPStackSize",
+        "Value": "30",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Feeds",
         "OriginalValue": "1",
-        "name": "EnableFeeds",
-        "value": "0",
-        "type": "DWord"
+        "Name": "EnableFeeds",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Feeds",
         "OriginalValue": "1",
-        "name": "ShellFeedsTaskbarViewMode",
-        "value": "2",
-        "type": "DWord"
+        "Name": "ShellFeedsTaskbarViewMode",
+        "Value": "2",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer",
         "OriginalValue": "1",
-        "name": "HideSCAMeetNow",
-        "value": "1",
-        "type": "DWord"
+        "Name": "HideSCAMeetNow",
+        "Value": "1",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games",
         "OriginalValue": "1",
-        "name": "GPU Priority",
-        "value": "8",
-        "type": "DWord"
+        "Name": "GPU Priority",
+        "Value": "8",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games",
         "OriginalValue": "1",
-        "name": "Priority",
-        "value": "6",
-        "type": "DWord"
+        "Name": "Priority",
+        "Value": "6",
+        "Type": "DWord"
       },
       {
         "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games",
         "OriginalValue": "High",
-        "name": "Scheduling Category",
-        "value": "High",
-        "type": "String"
+        "Name": "Scheduling Category",
+        "Value": "High",
+        "Type": "String"
       }
     ],
     "InvokeScript": [
@@ -2698,7 +2771,7 @@ $tweaks = '{
             $preferences.Preferences[28] = 0
             Set-ItemProperty -Path \"HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\TaskManager\" -Name \"Preferences\" -Type Binary -Value $preferences.Preferences
         }
-        Remove-Item -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MyComputer\\NameSpace\\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}\" -Recurse -ErrorAction SilentlyContinue  
+        Remove-Item -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MyComputer\\NameSpace\\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}\" -Recurse -ErrorAction SilentlyContinue
 
         # Group svchost.exe processes
         $ram = (Get-CimInstance -ClassName Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum / 1kb
@@ -2755,95 +2828,95 @@ $tweaks = '{
   "WPFMiscTweaksDisplay": {
     "registry": [
       {
-        "path": "HKCU:\\Control Panel\\Desktop",
+        "Path": "HKCU:\\Control Panel\\Desktop",
         "OriginalValue": "1",
-        "name": "DragFullWindows",
-        "value": "0",
-        "type": "String"
+        "Name": "DragFullWindows",
+        "Value": "0",
+        "Type": "String"
       },
       {
-        "path": "HKCU:\\Control Panel\\Desktop",
+        "Path": "HKCU:\\Control Panel\\Desktop",
         "OriginalValue": "1",
-        "name": "MenuShowDelay",
-        "value": "200",
-        "type": "String"
+        "Name": "MenuShowDelay",
+        "Value": "200",
+        "Type": "String"
       },
       {
-        "path": "HKCU:\\Control Panel\\Desktop\\WindowMetrics",
+        "Path": "HKCU:\\Control Panel\\Desktop\\WindowMetrics",
         "OriginalValue": "1",
-        "name": "MinAnimate",
-        "value": "0",
-        "type": "String"
+        "Name": "MinAnimate",
+        "Value": "0",
+        "Type": "String"
       },
       {
-        "path": "HKCU:\\Control Panel\\Keyboard",
+        "Path": "HKCU:\\Control Panel\\Keyboard",
         "OriginalValue": "1",
-        "name": "KeyboardDelay",
-        "value": "0",
-        "type": "DWord"
+        "Name": "KeyboardDelay",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
-        "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+        "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
         "OriginalValue": "1",
-        "name": "ListviewAlphaSelect",
-        "value": "0",
-        "type": "DWord"
+        "Name": "ListviewAlphaSelect",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
-        "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+        "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
         "OriginalValue": "1",
-        "name": "ListviewShadow",
-        "value": "0",
-        "type": "DWord"
+        "Name": "ListviewShadow",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
-        "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+        "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
         "OriginalValue": "1",
-        "name": "TaskbarAnimations",
-        "value": "0",
-        "type": "DWord"
+        "Name": "TaskbarAnimations",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
-        "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects",
+        "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects",
         "OriginalValue": "1",
-        "name": "VisualFXSetting",
-        "value": "3",
-        "type": "DWord"
+        "Name": "VisualFXSetting",
+        "Value": "3",
+        "Type": "DWord"
       },
       {
-        "path": "HKCU:\\Software\\Microsoft\\Windows\\DWM",
+        "Path": "HKCU:\\Software\\Microsoft\\Windows\\DWM",
         "OriginalValue": "1",
-        "name": "EnableAeroPeek",
-        "value": "0",
-        "type": "DWord"
+        "Name": "EnableAeroPeek",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
-        "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+        "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
         "OriginalValue": "1",
-        "name": "TaskbarMn",
-        "value": "0",
-        "type": "DWord"
+        "Name": "TaskbarMn",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
-        "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+        "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
         "OriginalValue": "1",
-        "name": "TaskbarDa",
-        "value": "0",
-        "type": "DWord"
+        "Name": "TaskbarDa",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
-        "path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+        "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
         "OriginalValue": "1",
-        "name": "ShowTaskViewButton",
-        "value": "0",
-        "type": "DWord"
+        "Name": "ShowTaskViewButton",
+        "Value": "0",
+        "Type": "DWord"
       },
       {
         "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Search",
         "OriginalValue": "1",
-        "name": "SearchboxTaskbarMode",
-        "value": "0",
-        "type": "DWord"
+        "Name": "SearchboxTaskbarMode",
+        "Value": "0",
+        "Type": "DWord"
       }
     ],
     "InvokeScript": [
@@ -2934,26 +3007,26 @@ $tweaks = '{
       "
         $TeamsPath = [System.IO.Path]::Combine($env:LOCALAPPDATA, ''Microsoft'', ''Teams'')
         $TeamsUpdateExePath = [System.IO.Path]::Combine($TeamsPath, ''Update.exe'')
-    
+
         Write-Host \"Stopping Teams process...\"
         Stop-Process -Name \"*teams*\" -Force -ErrorAction SilentlyContinue
-    
+
         Write-Host \"Uninstalling Teams from AppData\\Microsoft\\Teams\"
         if ([System.IO.File]::Exists($TeamsUpdateExePath)) {
             # Uninstall app
             $proc = Start-Process $TeamsUpdateExePath \"-uninstall -s\" -PassThru
             $proc.WaitForExit()
         }
-    
+
         Write-Host \"Removing Teams AppxPackage...\"
         Get-AppxPackage \"*Teams*\" | Remove-AppxPackage -ErrorAction SilentlyContinue
         Get-AppxPackage \"*Teams*\" -AllUsers | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
-    
+
         Write-Host \"Deleting Teams directory\"
         if ([System.IO.Directory]::Exists($TeamsPath)) {
             Remove-Item $TeamsPath -Force -Recurse -ErrorAction SilentlyContinue
         }
-    
+
         Write-Host \"Deleting Teams uninstall registry key\"
         # Uninstall from Uninstall registry key UninstallString
         $us = (Get-ChildItem -Path HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall, HKLM:\\SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall | Get-ItemProperty | Where-Object { $_.DisplayName -like ''*Teams*''}).UninstallString
@@ -2978,7 +3051,7 @@ $tweaks = '{
   "WPFEssTweaksStorage": {
     "InvokeScript": [
       "Remove-Item -Path \"HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy\" -Recurse -ErrorAction SilentlyContinue"
-    ], 
+    ],
     "UndoScript": [
       "New-Item -Path \"HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy\" | Out-Null
       "
@@ -2987,31 +3060,31 @@ $tweaks = '{
   "WPFMiscTweaksLapNum": {
     "Registry": [
       {
-        "path": "HKU:\\.DEFAULT\\Control Panel\\Keyboard",
+        "Path": "HKU:\\.DEFAULT\\Control Panel\\Keyboard",
         "OriginalValue": "1",
-        "name": "InitialKeyboardIndicators",
-        "value": "0",
-        "type": "DWord"
+        "Name": "InitialKeyboardIndicators",
+        "Value": "0",
+        "Type": "DWord"
       }
     ]
   },
   "WPFMiscTweaksNum": {
     "Registry": [
       {
-        "path": "HKU:\\.DEFAULT\\Control Panel\\Keyboard",
+        "Path": "HKU:\\.DEFAULT\\Control Panel\\Keyboard",
         "OriginalValue": "1",
-        "name": "InitialKeyboardIndicators",
-        "value": "80000002",
-        "type": "DWord"
+        "Name": "InitialKeyboardIndicators",
+        "Value": "80000002",
+        "Type": "DWord"
       }
     ]
   },
   "WPFEssTweaksRemoveEdge": {
     "InvokeScript": [
-        "      
+        "
         #:: Standalone script by AveYo Source: https://raw.githubusercontent.com/AveYo/fox/main/Edge_Removal.bat
 
-        curl.exe -s \"https://raw.githubusercontent.com/ChrisTitusTech/winutil/main/edgeremoval.bat\" -o $ENV:temp\\edgeremoval.bat
+        curl.exe -s \"https://raw.githubusercontent.com/AveYo/fox/main/Edge_Removal.bat\" -o $ENV:temp\\edgeremoval.bat
         Start-Process $ENV:temp\\edgeremoval.bat
 
         "
@@ -3026,7 +3099,7 @@ $tweaks = '{
   "WPFEssTweaksRemoveOnedrive": {
     "InvokeScript": [
         "
-         
+
         Write-Host \"Kill OneDrive process\"
         taskkill.exe /F /IM \"OneDrive.exe\"
         taskkill.exe /F /IM \"explorer.exe\"
@@ -3140,72 +3213,72 @@ $tweaks = '{
   "WPFMiscTweaksDisableUAC": {
     "registry": [
       {
-        "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+        "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
         "OriginalValue": "5",
-        "name": "ConsentPromptBehaviorAdmin",
-        "value": "0",
-        "type": "DWord"
+        "Name": "ConsentPromptBehaviorAdmin",
+        "Value": "0",
+        "Type": "DWord"
       }
     ]
   },
   "WPFMiscTweaksDisableMouseAcceleration": {
     "registry": [
       {
-        "path": "HKCU:\\Control Panel\\Mouse",
+        "Path": "HKCU:\\Control Panel\\Mouse",
         "OriginalValue": "1",
-        "name": "MouseSpeed",
-        "value": "0",
-        "type": "String"
+        "Name": "MouseSpeed",
+        "Value": "0",
+        "Type": "String"
       },
       {
-        "path": "HKCU:\\Control Panel\\Mouse",
+        "Path": "HKCU:\\Control Panel\\Mouse",
         "OriginalValue": "6",
-        "name": "MouseThreshold1",
-        "value": "0",
-        "type": "String"
+        "Name": "MouseThreshold1",
+        "Value": "0",
+        "Type": "String"
       },
       {
-        "path": "HKCU:\\Control Panel\\Mouse",
+        "Path": "HKCU:\\Control Panel\\Mouse",
         "OriginalValue": "10",
-        "name": "MouseThreshold2",
-        "value": "0",
-        "type": "String"
+        "Name": "MouseThreshold2",
+        "Value": "0",
+        "Type": "String"
       }
     ]
   },
   "WPFMiscTweaksEnableMouseAcceleration": {
     "registry": [
       {
-        "path": "HKCU:\\Control Panel\\Mouse",
+        "Path": "HKCU:\\Control Panel\\Mouse",
         "OriginalValue": "1",
-        "name": "MouseSpeed",
-        "value": "1",
-        "type": "String"
+        "Name": "MouseSpeed",
+        "Value": "1",
+        "Type": "String"
       },
       {
-        "path": "HKCU:\\Control Panel\\Mouse",
+        "Path": "HKCU:\\Control Panel\\Mouse",
         "OriginalValue": "6",
-        "name": "MouseThreshold1",
-        "value": "6",
-        "type": "String"
+        "Name": "MouseThreshold1",
+        "Value": "6",
+        "Type": "String"
       },
       {
-        "path": "HKCU:\\Control Panel\\Mouse",
+        "Path": "HKCU:\\Control Panel\\Mouse",
         "OriginalValue": "10",
-        "name": "MouseThreshold2",
-        "value": "10",
-        "type": "String"
+        "Name": "MouseThreshold2",
+        "Value": "10",
+        "Type": "String"
       }
     ]
   },
   "WPFMiscTweaksEnableVerboselogon": {
     "registry": [
       {
-        "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\policies\\system",
+        "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\policies\\system",
         "OriginalValue": "0",
-        "name": "VerboseStatus",
-        "value": "1",
-        "type": "DWord"
+        "Name": "VerboseStatus",
+        "Value": "1",
+        "Type": "DWord"
       }
     ]
   },
@@ -3288,10 +3361,282 @@ $tweaks = '{
       "Disable-NetAdapterBinding -Name \"*\" -ComponentID ms_tcpip6"
     ]
   }
-}' | convertfrom-json
+}'
+$tweaksschema = '{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "registry": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "allOf": [
+            {
+              "oneOf": [
+                {
+                  "required": [
+                    "Path"
+                  ]
+                },
+                {
+                  "required": [
+                    "path"
+                  ]
+                }
+              ]
+            },
+            {
+              "oneOf": [
+                {
+                  "required": [
+                    "Name"
+                  ]
+                },
+                {
+                  "required": [
+                    "name"
+                  ]
+                }
+              ]
+            },
+            {
+              "oneOf": [
+                {
+                  "required": [
+                    "Type"
+                  ]
+                },
+                {
+                  "required": [
+                    "type"
+                  ]
+                }
+              ]
+            },
+            {
+              "oneOf": [
+                {
+                  "required": [
+                    "Value"
+                  ]
+                },
+                {
+                  "required": [
+                    "value"
+                  ]
+                }
+              ]
+            },
+            {
+              "oneOf": [
+                {
+                  "required": [
+                    "OriginalValue"
+                  ]
+                },
+                {
+                  "required": [
+                    "originalValue"
+                  ]
+                },
+                {
+                  "required": [
+                    "Originalvalue"
+                  ]
+                },
+                {
+                  "required": [
+                    "originalvalue"
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "Path": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "Name": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "Type": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "Value": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            },
+            "OriginalValue": {
+              "type": "string"
+            },
+            "originalValue": {
+              "type": "string"
+            },
+            "originalvalue": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "service": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "Name": {
+              "type": "string"
+            },
+            "StartupType": {
+              "type": "string"
+            },
+            "OriginalType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Name",
+            "StartupType",
+            "OriginalType"
+          ]
+        }
+      },
+      "ScheduledTask": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "Name": {
+              "type": "string"
+            },
+            "State": {
+              "type": "string"
+            },
+            "OriginalState": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Name",
+            "State",
+            "OriginalState"
+          ]
+        }
+      },
+      "InvokeScript": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "UndoScript": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "appx": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}'
+function Get-Config {
+    <#
+    .SYNOPSIS
+        This function retrieves configuration data from either a local file or a remote URL and merges it into a single object.
+    
+    .DESCRIPTION
+        The Get-Config function takes an input object and attempts to retrieve configuration data from it. If the input object is a string, it is treated as a file path or URL and the corresponding data is retrieved. If the input object is a custom object, it is added to the output object as is. The retrieved data is then merged into a single object and returned.
+    
+    .PARAMETER InputObject
+        The input object from which to retrieve configuration data.
+    
+    .EXAMPLE
+        PS C:\> Get-Config -InputObject "C:\config.json"
+        Retrieves configuration data from the local file "C:\config.json" and returns it as a single object.
+    
+    .EXAMPLE
+        PS C:\> Get-Config -InputObject "https://example.com/config.json"
+        Retrieves configuration data from the remote URL "https://example.com/config.json" and returns it as a single object.
+    
+    .EXAMPLE
+        PS C:\> Get-Config -InputObject @{ "key1" = "value1"; "key2" = "value2" }
+        Adds the custom object @{ "key1" = "value1"; "key2" = "value2" } to the output object and returns it.
+    
+    #>
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'None')]
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [psobject]$InputObject,
+        [string]$JsonSchema
+    )
+    begin {
+        $InputObjects = @()
+        $TestJsonCommand = (get-command Test-Json -ErrorAction SilentlyContinue)
+        if ($null -eq $TestJsonCommand) {
+            $TestJsonCommand = { $true }
+        }
+    }
+    process {
+        try {
+            if ($InputObject -is [string]) {
+                if (Test-Path $InputObject) {
+                    # Local File
+                    if ($PsCmdlet.ShouldProcess($InputObject, 'Loading extras from file')) {
+                        $JsonString = Get-Content $InputObject -Raw
+                    }
+                }
+                elseif ([System.Uri]::IsWellFormedUriString($InputObject, [System.UriKind]::Absolute)) {
+                    # Remote File
+                    if ($PsCmdlet.ShouldProcess($InputObject, 'Fetching extras from url')) {
+                        $JsonString = Invoke-WebRequest $InputObject
+                    }
+                }
+                else {
+                    # Json String
+                    $JsonString = $InputObject
+                }
+                if (&$TestJsonCommand -Json $JsonString -Schema $JsonSchema) {
+                    $InputObjects += $jsonString | ConvertFrom-Json
+                }
+            }
+            elseif ($InputObject -is [pscustomobject]) {
+                $InputObjects += $InputObject
+            }
+        }
+        catch {
+            Write-Error "Failed to parse $InputObject"
+            Write-Error $PSItem
+            exit 1 
+        }
+    }
+    end {
+        $InputObjects | Merge-CustomObjects { $_ | Select-Object -Last 1 }
+    }
+}
+# Test-Json -SchemaFile .\json\feature.schema.json -Json $(Get-Content '.\json\feature.json' -Raw)
+$tweaks = @($tweaks) + $ExtraTweaks | Get-Config -Whatif:$WhatIfPreference -JsonSchema $tweaksschema
+$dns = @($dns) + $ExtraDNSProviders | Get-Config -Whatif:$WhatIfPreference -JsonSchema $dnsschema
+$feature = @($feature) + $ExtraWindowsFeaturesBundles | Get-Config -Whatif:$WhatIfPreference -JsonSchema $featureschema
 switch ($PsCmdlet.ParameterSetName) {   
     'Tweaks' {
-        Start-Transcript $ENV:TEMP\Winutil.log -Append
+        Start-Transcript $TranscriptPath -Append
         Invoke-WinUtil -TweakNames $TweakNames -DNSProvider $DNSProvider -WindowsFeaturesBundles $WindowsFeaturesBundles -dns $dns -tweaks $tweaks -feature $feature -Undo:$Undo
         Stop-Transcript
     }

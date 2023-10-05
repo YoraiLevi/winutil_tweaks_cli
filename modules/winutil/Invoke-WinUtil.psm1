@@ -19,7 +19,9 @@ function Invoke-WinUtil {
     return
   }
   
-  New-RestorePoint
+  if ($TweakNames -or $WindowsFeaturesBundles) {
+    New-RestorePoint
+  }
   if ($DNSProvider) {
     Set-WinUtilDNSProvider -DNSProvider $DNSProvider -dns $dns
   }

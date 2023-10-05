@@ -1,0 +1,7 @@
+{
+    "DummyTweak": {
+        "InvokeScript": [
+            "echo 'Hello World!'"
+        ]
+    }
+}
