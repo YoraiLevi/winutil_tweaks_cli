@@ -118,9 +118,9 @@ function Set-RegistryKey {
     if ($PSCmdlet.ShouldProcess("$Path", "Set Registry Key Value: '$Name' to value: '$Value'")) {
         if (!(Test-Path 'HKU:\')) { New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS }
 
-        if (!(Test-Path $Path)) {
-            New-Item -Path $Path -Force -ErrorAction Stop | Out-Null
+        if (!(Test-Path -LiteralPath $Path)) {
+            New-Item -LiteralPath $Path -Force -ErrorAction Stop | Out-Null
         }
-        Set-ItemProperty -Path $Path -Name $Name -Type $Type -Value $Value -Force -ErrorAction Stop | Out-Null
+        Set-ItemProperty -LiteralPath $Path -Name $Name -Type $Type -Value $Value -Force -ErrorAction Stop | Out-Null
     }
 }
