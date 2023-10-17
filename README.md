@@ -81,7 +81,7 @@ Delete temp files and remove onedrive
 Set DNS to Google DNS
 
 ```ps1
-.\winutil_cli.ps1 -DNSProvider Google -TranscriptPath
+.\winutil_cli.ps1 -DNSProvider Google
 ```
 
 Use builtin tweaks only
