@@ -3588,7 +3588,7 @@ function Get-Config {
     )
     begin {
         $InputObjects = @()
-        $TestJsonCommand = (get-command Test-Json -ErrorAction SilentlyContinue)
+        # $TestJsonCommand = (get-command Test-Json -ErrorAction SilentlyContinue) # as of 20240614 Test-Json stopped working and I don't know why at the moment.
         if ($null -eq $TestJsonCommand) {
             $TestJsonCommand = { $true }
         }
